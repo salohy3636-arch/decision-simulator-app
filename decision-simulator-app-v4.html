@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>مساعد اتخاذ القرار الاستراتيجي</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js" crossorigin="anonymous" onload="alert('تم تحميل مكتبة Supabase بنجاح. window.supabase = '+(typeof window.supabase))" onerror="alert('فشل تحميل ملف مكتبة Supabase نفسه من الإنترنت!')"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0F1419; --panel:#171E27; --panel-alt:#1C2531; --border:#2A323D;
+    --text:#E8EAED; --muted:#8B95A1; --gold:#C9A227;
+    --risk:#C1443A; --gain:#3D9188;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{background:var(--bg); color:var(--text); font-family:'Tajawal','Segoe UI',Tahoma,sans-serif; min-height:100vh; padding:28px 16px 60px;}
+  .wrap{max-width:920px; margin:0 auto;}
+  .eyebrow{color:var(--gold); font-size:12px; letter-spacing:2px; font-weight:700; text-transform:uppercase; margin-bottom:6px;}
+  h1{font-size:26px; font-weight:900; margin-bottom:4px;}
+  .sub{color:var(--muted); font-size:14px; margin-bottom:24px;}
+  .panel{background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:22px; margin-bottom:16px;}
+  .panel-title{font-size:13px; font-weight:700; color:var(--muted); margin-bottom:16px; display:flex; align-items:center; gap:8px;}
+  .panel-title::before{content:''; width:3px; height:14px; background:var(--gold); border-radius:2px;}
+  input, select{width:100%; background:var(--panel-alt); border:1px solid var(--border); color:var(--text); padding:10px; border-radius:6px; font-family:'Tajawal',sans-serif; font-size:14px;}
+  input[type=number]{font-family:'IBM Plex Mono',monospace;}
+  label{display:block; font-size:12px; color:var(--muted); margin-bottom:6px;}
+  .btn{background:var(--gold); color:#151A10; border:none; padding:13px; font-size:14px; font-weight:800; border-radius:8px; cursor:pointer; font-family:'Tajawal',sans-serif;}
+  .btn:disabled{opacity:0.5; cursor:wait;}
+  .btn-outline{background:transparent; border:1px solid var(--border); color:var(--text);}
+  .row{display:flex; gap:10px; align-items:center; flex-wrap:wrap;}
+  .badge{font-size:11px; padding:3px 10px; border-radius:20px; background:var(--panel-alt); color:var(--gold); font-weight:700;}
+  .error{color:var(--risk); font-size:13px; margin-top:10px;}
+  .narrative-text{font-size:14.5px; line-height:2; white-space:pre-wrap;}
+  .da-card{border-right:3px solid var(--risk); background:var(--panel-alt); border-radius:6px; padding:14px 16px; margin-bottom:10px; font-size:13.5px; line-height:1.8;}
+  .hero-number{font-size:48px; font-weight:900; font-family:'IBM Plex Mono',monospace; color:var(--gold);}
+  #app{display:none;}
+  #authScreen .panel{max-width:400px; margin:60px auto;}
+</style>
+</head>
+<body>
+<script>window.onerror=function(m,u,l){alert('خطأ برمجي: '+m+' - سطر '+l);};</script>
+<div class="wrap">
+
+  <!-- شاشة تسجيل الدخول -->
+  <div id="authScreen">
+    <div class="eyebrow">تسجيل الدخول</div>
+    <div class="panel">
+      <div class="panel-title">دخول عبر رابط سحري (Magic Link)</div>
+      <label>البريد الإلكتروني</label>
+      <input type="email" id="emailInput" placeholder="you@company.com" style="margin-bottom:14px;">
+      <button class="btn" style="width:100%;" onclick="sendMagicLink()">أرسل رابط الدخول</button>
+      <div id="authMsg" style="font-size:12px; color:var(--muted); margin-top:10px;"></div>
+    </div>
+  </div>
+
+  <!-- التطبيق الرئيسي -->
+  <div id="app">
+    <div class="row" style="justify-content:space-between; margin-bottom:20px;">
+      <div>
+        <div class="eyebrow">لوحة القرار</div>
+        <h1>مساعد اتخاذ القرار الاستراتيجي</h1>
+      </div>
+      <div class="row">
+        <span class="badge" id="planBadge">—</span>
+        <button class="btn btn-outline" onclick="logout()">خروج</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">خطتك الحالية</div>
+      <div class="row" style="justify-content:space-between;">
+        <span style="color:var(--muted); font-size:13px;" id="usageText">—</span>
+        <button class="btn" onclick="upgradePlan('pro')">ترقية إلى Pro</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">تعريف القرار</div>
+      <label>اسم القرار</label>
+      <input type="text" id="decisionName" value="فتح فرع جديد - مطعم" style="margin-bottom:14px;">
+      <label>الاستثمار الأولي (ريال)</label>
+      <input type="number" id="investment" value="300000" style="margin-bottom:14px;">
+
+      <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:14px;">
+        <div><label>إيراد - أقل</label><input type="number" id="rev_min" value="40000"></div>
+        <div><label>إيراد - الأرجح</label><input type="number" id="rev_likely" value="70000"></div>
+        <div><label>إيراد - أعلى</label><input type="number" id="rev_max" value="110000"></div>
+      </div>
+      <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:14px;">
+        <div><label>تكلفة ثابتة - أقل</label><input type="number" id="fix_min" value="25000"></div>
+        <div><label>تكلفة ثابتة - الأرجح</label><input type="number" id="fix_likely" value="30000"></div>
+        <div><label>تكلفة ثابتة - أعلى</label><input type="number" id="fix_max" value="38000"></div>
+      </div>
+      <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:14px;">
+        <div><label>تكلفة متغيرة % - أقل</label><input type="number" id="var_min" value="30"></div>
+        <div><label>تكلفة متغيرة % - الأرجح</label><input type="number" id="var_likely" value="38"></div>
+        <div><label>تكلفة متغيرة % - أعلى</label><input type="number" id="var_max" value="48"></div>
+      </div>
+      <label>أفق التحليل (أشهر)</label>
+      <input type="number" id="months" value="24" style="margin-bottom:16px; max-width:160px;">
+
+      <button class="btn" style="width:100%;" id="runBtn" onclick="runSimulation()">▶ شغّل المحاكاة والتحليل</button>
+      <div id="errorBox"></div>
+    </div>
+
+    <div id="resultsPanel" style="display:none;">
+      <div class="panel">
+        <div class="panel-title">نسبة نجاح القرار</div>
+        <div class="hero-number" id="successRate">—</div>
+      </div>
+      <div class="panel">
+        <div class="panel-title">السرد التحليلي</div>
+        <div id="narrativeBox" class="narrative-text"></div>
+      </div>
+      <div class="panel">
+        <div class="panel-title">الحجج المضادة</div>
+        <div id="daBox"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ⚙️ إعدادات لازم تغيّرها قبل النشر
+const SUPABASE_URL = "https://odwhlxwgzlskudzqhdjm.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_-N-VtHUx9at10SKD2GUJbQ_N8JS77wV";
+const API_BASE_URL = "https://decision-simulator-backen-production.up.railway.app";
+
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+let currentSession = null;
+
+async function init(){
+  const { data: { session } } = await supabase.auth.getSession();
+  if(session){ currentSession = session; showApp(); }
+
+  supabase.auth.onAuthStateChange((event, session) => {
+    if(session){ currentSession = session; showApp(); }
+  });
+}
+
+async function sendMagicLink(){
+  const email = document.getElementById('emailInput').value;
+  const msgBox = document.getElementById('authMsg');
+  if(!email){ msgBox.textContent = 'أدخل بريد إلكتروني صالح'; return; }
+
+  const { error } = await supabase.auth.signInWithOtp({ email });
+  msgBox.textContent = error ? 'خطأ: ' + error.message : 'تحقق من بريدك الإلكتروني — أرسلنا رابط الدخول';
+}
+
+async function logout(){
+  await supabase.auth.signOut();
+  location.reload();
+}
+
+function showApp(){
+  document.getElementById('authScreen').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  document.getElementById('planBadge').textContent = 'جاري التحميل...';
+  // ملاحظة: لعرض الخطة الفعلية والاستخدام، أضف مسار GET /api/me في الـ backend
+  // يرجّع { plan, usage_count } من جدول profiles، واستدعه هنا
+}
+
+async function upgradePlan(plan){
+  const res = await fetch(`${API_BASE_URL}/api/billing/create-checkout-session`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${currentSession.access_token}`
+    },
+    body: JSON.stringify({ plan })
+  });
+  const data = await res.json();
+  if(data.url) window.location.href = data.url;
+  else alert('خطأ: ' + (data.error || 'تعذر إنشاء جلسة الدفع'));
+}
+
+async function runSimulation(){
+  const errorBox = document.getElementById('errorBox');
+  errorBox.innerHTML = '';
+  const btn = document.getElementById('runBtn');
+  btn.disabled = true; btn.textContent = 'جاري التشغيل...';
+
+  const scenario = {
+    investment: +document.getElementById('investment').value,
+    rev_min: +document.getElementById('rev_min').value,
+    rev_likely: +document.getElementById('rev_likely').value,
+    rev_max: +document.getElementById('rev_max').value,
+    fix_min: +document.getElementById('fix_min').value,
+    fix_likely: +document.getElementById('fix_likely').value,
+    fix_max: +document.getElementById('fix_max').value,
+    var_min: +document.getElementById('var_min').value,
+    var_likely: +document.getElementById('var_likely').value,
+    var_max: +document.getElementById('var_max').value,
+    months: +document.getElementById('months').value,
+  };
+  const name = document.getElementById('decisionName').value;
+
+  try{
+    const res = await fetch(`${API_BASE_URL}/api/simulate`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${currentSession.access_token}`
+      },
+      body: JSON.stringify({ name, scenario })
+    });
+    const data = await res.json();
+    if(!res.ok) throw new Error(data.error || 'فشل الطلب');
+
+    document.getElementById('resultsPanel').style.display = 'block';
+    document.getElementById('successRate').textContent = data.mcResult.success_rate_pct + '%';
+    document.getElementById('narrativeBox').textContent = data.narrative;
+    document.getElementById('daBox').innerHTML = data.devilsArguments.map((a,i) =>
+      `<div class="da-card"><b>0${i+1}</b> — ${a}</div>`).join('');
+
+  } catch(e){
+    errorBox.innerHTML = `<div class="error">${e.message}</div>`;
+  } finally {
+    btn.disabled = false; btn.textContent = '▶ شغّل المحاكاة والتحليل';
+  }
+}
+
+init();
+</script>
+</body>
+</html>
